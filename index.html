@@ -493,10 +493,7 @@
                 document.getElementById('volDisplay').innerText = `${V.toFixed(1)} L (P=${pressure} atm)`;
                 document.getElementById('chamberVolumeText').innerText = `V = ${V.toFixed(1)} L`;
                 
-                const pistonHeader = document.getElementById('pistonHeader');
-                const heightPercent = Math.max(0, 100 - (V / 5.0) * 85);
-                pistonHeader.style.height = `${heightPercent}%`;
-
+                updatePistonVisual();
                 updateSimulationState();
             });
 
@@ -551,6 +548,7 @@
                 this.x += this.vx;
                 this.y += this.vy;
 
+                // Strict boundary collision & clamping
                 if (this.x - this.radius < 0) {
                     this.x = this.radius;
                     this.vx = Math.abs(this.vx);
@@ -580,6 +578,30 @@
             }
         }
 
+        // Piston position helper function
+        function getPistonY() {
+            if (!canvas || canvas.height === 0) return 20;
+            const frac = (5.0 - V) / 4.0; // 0 at V=5.0L, 1 at V=1.0L
+            const ratio = 0.05 + frac * 0.55; // Piston occupies 5% to 60% of top space
+            return canvas.height * ratio;
+        }
+
+        function updatePistonVisual() {
+            const pistonHeader = document.getElementById('pistonHeader');
+            if (!pistonHeader || !canvas) return;
+            const pistonY = getPistonY();
+            const heightPercent = canvas.height > 0 ? (pistonY / canvas.height) * 100 : 10;
+            pistonHeader.style.height = `${heightPercent}%`;
+
+            // Push down any particles trapped inside or above the piston boundary
+            particles.forEach(p => {
+                if (p.y - p.radius < pistonY) {
+                    p.y = pistonY + p.radius + 2;
+                    p.vy = Math.abs(p.vy);
+                }
+            });
+        }
+
         // Smart particle sync that does NOT teleport existing particles
         function syncParticlesWithMoles() {
             const countA = Math.round(nA * 3);
@@ -602,7 +624,7 @@
             const current = particles.filter(p => p.type === type);
             const width = canvas.width || 300;
             const height = canvas.height || 300;
-            const pistonY = (1 - (V / 5.0)) * (height * 0.5);
+            const pistonY = getPistonY();
 
             if (current.length < targetCount) {
                 const needed = targetCount - current.length;
@@ -625,7 +647,7 @@
         function handleParticlePhysicsAndCollisions() {
             const width = canvas.width;
             const height = canvas.height;
-            const pistonY = (1 - (V / 5.0)) * (height * 0.5);
+            const pistonY = getPistonY();
 
             const now = performance.now();
 
@@ -662,6 +684,12 @@
                             p2.x += (overlap / 2) * cos;
                             p2.y += (overlap / 2) * sin;
                         }
+
+                        // Clamp position immediately to avoid clipping out
+                        p1.x = Math.max(p1.radius, Math.min(width - p1.radius, p1.x));
+                        p1.y = Math.max(pistonY + p1.radius, Math.min(height - p1.radius, p1.y));
+                        p2.x = Math.max(p2.radius, Math.min(width - p2.radius, p2.x));
+                        p2.y = Math.max(pistonY + p2.radius, Math.min(height - p2.radius, p2.y));
 
                         totalCollisions++;
                         collisionHistory.push(now);
@@ -962,6 +990,7 @@
             document.getElementById('numD').value = "0.0";
 
             resetCollisionCounter();
+            updatePistonVisual();
             syncParticlesWithMoles();
             updateSimulationState();
 
@@ -1002,7 +1031,7 @@
                     document.getElementById('volSlider').value = 1.0;
                     document.getElementById('volDisplay').innerText = "1.0 L (P=2.00 atm)";
                     document.getElementById('chamberVolumeText').innerText = "V = 1.0 L";
-                    document.getElementById('pistonHeader').style.height = '70%';
+                    updatePistonVisual();
                     updateSimulationState();
                     break;
                 case 'expand':
@@ -1010,7 +1039,7 @@
                     document.getElementById('volSlider').value = 4.0;
                     document.getElementById('volDisplay').innerText = "4.0 L (P=0.50 atm)";
                     document.getElementById('chamberVolumeText').innerText = "V = 4.0 L";
-                    document.getElementById('pistonHeader').style.height = '15%';
+                    updatePistonVisual();
                     updateSimulationState();
                     break;
                 case 'heat':
