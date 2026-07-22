@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>화학 평형 실시간 시뮬레이터 (Q & K Simulator)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        .glow-box-blue { box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); }
+        .glow-box-emerald { box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+        .glow-box-amber { box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between selection:bg-cyan-500 selection:text-slate-950">
+
+    <!-- Header Banner -->
+    <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-50 py-3 px-4 sm:px-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-gradient-to-tr from-cyan-600 to-blue-600 rounded-xl text-white shadow-lg">
+                    <i class="fa-solid fa-flask-vial text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">
+                        화학 평형 & 르샤틀리에 원리 시뮬레이터
+                    </h1>
+                    <p class="text-xs text-slate-400">반응 지수(Q), 평형 상수(K), 입자 충돌 및 동적 평형 실시간 시각화</p>
+                </div>
+            </div>
+
+            <!-- Reaction Equation Box -->
+            <div class="bg-slate-950/80 border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-3 text-sm sm:text-base font-mono">
+                <span class="text-rose-400 font-bold">2A <span class="text-xs text-slate-400">(g)</span></span>
+                <span class="text-slate-500">+</span>
+                <span class="text-sky-400 font-bold">B <span class="text-xs text-slate-400">(g)</span></span>
+                <span class="text-cyan-300 font-bold px-1 text-lg">⇌</span>
+                <span class="text-emerald-400 font-bold">C <span class="text-xs text-slate-400">(g)</span></span>
+                <span class="text-slate-500">+</span>
+                <span class="text-amber-400 font-bold">3D <span class="text-xs text-slate-400">(g)</span></span>
+                <span class="text-xs text-rose-300 bg-rose-950/60 border border-rose-800/50 px-2 py-0.5 rounded-full ml-1">
+                    ΔH &lt; 0 (발열)
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6 flex-grow">
+
+        <!-- Q vs K Numerical Dashboard -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <!-- Q Indicator Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between glow-box-blue relative overflow-hidden">
+                <div>
+                    <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                        <span class="font-semibold uppercase tracking-wider text-blue-400">반응 지수 (Q)</span>
+                        <span class="bg-blue-950/80 text-blue-300 border border-blue-800 px-2 py-0.5 rounded">현재 상태</span>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-3xl sm:text-4xl font-extrabold text-blue-400 font-mono tracking-tight" id="indicatorQ">0.0000</span>
+                        <span class="text-xs text-slate-400 font-mono">([C]¹·[D]³)/([A]²·[B]¹)</span>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-slate-800/80 text-xs text-slate-400 flex justify-between items-center">
+                    <span>현재 상태: <strong class="text-slate-200" id="qStateDesc">빈 용기</strong></span>
+                    <span class="text-blue-300" id="qStatusText">Q = 0.00</span>
+                </div>
+            </div>
+
+            <!-- K Indicator Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between glow-box-emerald relative overflow-hidden">
+                <div>
+                    <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                        <span class="font-semibold uppercase tracking-wider text-emerald-400">평형 상수 (K)</span>
+                        <span class="bg-emerald-950/80 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded">목표 상태</span>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-3xl sm:text-4xl font-extrabold text-emerald-400 font-mono tracking-tight" id="indicatorK">2.0000</span>
+                        <span class="text-xs text-slate-400 font-mono" id="kTempDetail">@ T = 300 K</span>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-slate-800/80 text-xs text-slate-400 flex justify-between items-center">
+                    <span>온도 변화: <strong class="text-amber-300">T↑ ⇒ K↓ (발열)</strong></span>
+                    <span class="text-emerald-300">K 고정값</span>
+                </div>
+            </div>
+
+            <!-- Reaction Direction & Balance Scale Gauge -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between glow-box-amber relative">
+                <div>
+                    <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                        <span class="font-semibold uppercase tracking-wider text-amber-400">반응 진행 방향</span>
+                        <span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-xs font-mono" id="qkRatioVal">Q/K = 0.00</span>
+                    </div>
+                    
+                    <div id="directionBadge" class="mt-2 py-2 px-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-center font-bold text-sm flex items-center justify-center gap-2 transition-all">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span id="directionText">용기 비어있음 (반응물 또는 생성물을 추가하세요)</span>
+                    </div>
+                </div>
+
+                <div class="mt-3 space-y-1">
+                    <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+                        <span class="text-cyan-400">Q &lt; K (정반응)</span>
+                        <span class="text-emerald-400 font-bold">Q = K (평형)</span>
+                        <span class="text-rose-400">Q &gt; K (역반응)</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-3 border border-slate-800 relative overflow-hidden">
+                        <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-emerald-400 z-10"></div>
+                        <div id="balanceMarker" class="absolute top-0 bottom-0 w-3 bg-cyan-400 rounded-full transition-all duration-300 -ml-1.5 shadow-md shadow-cyan-500/50" style="left: 50%;"></div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Preset Controls Bar -->
+        <section class="bg-slate-900/60 border border-slate-800 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                <span>실험 프리셋:</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="applyPreset('initialZero')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-left"></i> 전체 초기화 (0)
+                </button>
+                <button onclick="applyPreset('addA')" class="bg-slate-800 hover:bg-slate-700 text-rose-300 border border-rose-500/30 px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus text-xs"></i> A 반응물 4개 추가
+                </button>
+                <button onclick="applyPreset('compress')" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-compress text-xs"></i> 피스톤 압축 (부피↓)
+                </button>
+                <button onclick="applyPreset('expand')" class="bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30 px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-expand text-xs"></i> 피스톤 팽창 (부피↑)
+                </button>
+                <button onclick="applyPreset('heat')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-fire text-xs"></i> 가열 (T↑)
+                </button>
+                <button onclick="applyPreset('cool')" class="bg-slate-800 hover:bg-slate-700 text-blue-300 border border-blue-500/30 px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-snowflake text-xs"></i> 냉각 (T↓)
+                </button>
+            </div>
+        </section>
+
+        <!-- Main Interactive Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Left Column: 2D Piston Simulation & Collision Counters -->
+            <div class="lg:col-span-5 space-y-4">
+                
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-atom text-cyan-400"></i>
+                            2D 반응 용기 & 차분한 분자 운동
+                        </h2>
+                        <span class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full font-mono" id="chamberVolumeText">
+                            V = 2.0 L
+                        </span>
+                    </div>
+
+                    <!-- Canvas Container -->
+                    <div class="relative w-full aspect-square bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex flex-col justify-end">
+                        <canvas id="simCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+                        
+                        <!-- Piston Visual -->
+                        <div id="pistonHeader" class="absolute top-0 left-0 right-0 bg-slate-700 border-b-4 border-slate-500 h-4 transition-all duration-300 shadow-lg flex items-center justify-center">
+                            <div class="w-12 h-1 bg-slate-400 rounded-full"></div>
+                        </div>
+
+                        <!-- Legend Overlay -->
+                        <div class="absolute bottom-2 left-2 right-2 bg-slate-900/80 backdrop-blur border border-slate-800 rounded-lg p-2 flex items-center justify-around text-xs font-mono">
+                            <span class="flex items-center gap-1 text-rose-400"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> A (<span id="legendA">0</span>)</span>
+                            <span class="flex items-center gap-1 text-sky-400"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span> B (<span id="legendB">0</span>)</span>
+                            <span class="flex items-center gap-1 text-emerald-400"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> C (<span id="legendC">0</span>)</span>
+                            <span class="flex items-center gap-1 text-amber-400"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> D (<span id="legendD">0</span>)</span>
+                        </div>
+                    </div>
+
+                    <!-- Particle Collision Counter Panel -->
+                    <div class="mt-4 bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-2">
+                        <div class="flex items-center justify-between text-xs font-semibold text-slate-300">
+                            <span class="flex items-center gap-1.5 text-cyan-400">
+                                <i class="fa-solid fa-arrows-to-dot"></i> 입자간 충돌 측정 (Collision Counter)
+                            </span>
+                            <button onclick="resetCollisionCounter()" class="text-[10px] text-slate-400 hover:text-slate-200 underline">
+                                카운터 리셋
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-slate-900/90 p-2 rounded-lg border border-slate-800/80 flex flex-col">
+                                <span class="text-[10px] text-slate-400">총 충돌 횟수</span>
+                                <span class="text-base font-extrabold font-mono text-cyan-300" id="totalCollisionsVal">0</span>
+                            </div>
+                            <div class="bg-slate-900/90 p-2 rounded-lg border border-slate-800/80 flex flex-col">
+                                <span class="text-[10px] text-slate-400">초당 충돌률 (CPS)</span>
+                                <span class="text-base font-extrabold font-mono text-emerald-300" id="cpsVal">0 /s</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-[11px] font-mono text-slate-400 text-center pt-1 border-t border-slate-800/60">
+                            <div>반응물 충돌: <strong class="text-rose-300" id="reactantColVal">0</strong></div>
+                            <div>생성물 충돌: <strong class="text-amber-300" id="productColVal">0</strong></div>
+                            <div>유효 반응 충돌: <strong class="text-cyan-300" id="effectiveColVal">0</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="mt-3 flex items-center justify-between gap-2">
+                        <button id="playPauseBtn" onclick="togglePause()" class="flex-1 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-pause" id="playPauseIcon"></i>
+                            <span id="playPauseText">일시정지</span>
+                        </button>
+                        <button onclick="applyPreset('initialZero')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2 px-4 rounded-xl text-xs border border-slate-700 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-rotate"></i> 리셋
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Control Variables & Live Charts -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- Parameter Controls Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5">
+                    <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-3">
+                        <i class="fa-solid fa-sliders text-amber-400"></i>
+                        실시간 변인 조절 (온도, 부피/압력, 속도, 물질 몰수)
+                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        
+                        <!-- Temperature Control Slider -->
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between items-center text-xs">
+                                <label class="font-semibold text-amber-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-temperature-three-quarters"></i> 절대 온도 (T)
+                                </label>
+                                <span class="font-mono bg-amber-950/60 text-amber-300 border border-amber-800/60 px-2 py-0.5 rounded" id="tempDisplay">300 K</span>
+                            </div>
+                            <input type="range" id="tempSlider" min="200" max="600" step="5" value="300" 
+                                   class="w-full accent-amber-400 bg-slate-950 rounded-lg cursor-pointer h-2">
+                            <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                                <span>200K (차가움)</span>
+                                <span>600K (뜨거움)</span>
+                            </div>
+                        </div>
+
+                        <!-- Volume / Pressure Control Slider -->
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between items-center text-xs">
+                                <label class="font-semibold text-indigo-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-arrows-minimize"></i> 용기 부피 (V) / 압력 (P)
+                                </label>
+                                <span class="font-mono bg-indigo-950/60 text-indigo-300 border border-indigo-800/60 px-2 py-0.5 rounded" id="volDisplay">2.0 L (P=1.00 atm)</span>
+                            </div>
+                            <input type="range" id="volSlider" min="1.0" max="5.0" step="0.1" value="2.0" 
+                                   class="w-full accent-indigo-400 bg-slate-950 rounded-lg cursor-pointer h-2">
+                            <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                                <span>1.0L (고압)</span>
+                                <span>5.0L (저압)</span>
+                            </div>
+                        </div>
+
+                        <!-- Simulation Speed Slider -->
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between items-center text-xs">
+                                <label class="font-semibold text-emerald-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-gauge-high"></i> 이동 & 반응 속도
+                                </label>
+                                <span class="font-mono bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 px-2 py-0.5 rounded" id="speedDisplay">1.0x (표준)</span>
+                            </div>
+                            <input type="range" id="speedSlider" min="0.2" max="3.0" step="0.1" value="1.0" 
+                                   class="w-full accent-emerald-400 bg-slate-950 rounded-lg cursor-pointer h-2">
+                            <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                                <span>0.2x (느리게)</span>
+                                <span>1.5x</span>
+                                <span>3.0x (빠르게)</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Reactants & Products Moles Controls with +1 / -1 Buttons -->
+                    <div class="pt-3 border-t border-slate-800/80 space-y-3">
+                        <div class="flex items-center justify-between text-xs font-semibold text-slate-300">
+                            <span>물질별 몰수 ($n$) 조절 (+1 / -1 버튼으로 직관적 추가/삭제)</span>
+                            <span class="text-[11px] text-slate-400">농도 $[M] = n/V$</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            
+                            <!-- Substance A -->
+                            <div class="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl space-y-1.5">
+                                <div class="flex justify-between items-center text-xs">
+                                    <span class="text-rose-400 font-bold">A 몰수</span>
+                                    <span class="font-mono text-slate-300 text-xs" id="concA">0.00 M</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="adjustSubstance('A', -1)" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-rose-400 font-bold px-2 py-1 rounded border border-slate-700 text-xs transition flex-1">-1</button>
+                                    <input type="number" id="numA" min="0" max="20" step="0.5" value="0.0" 
+                                           class="w-12 bg-slate-900 border border-slate-700 text-slate-100 rounded py-1 text-xs font-mono text-center focus:outline-none focus:border-rose-500">
+                                    <button onclick="adjustSubstance('A', 1)" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-rose-400 font-bold px-2 py-1 rounded border border-slate-700 text-xs transition flex-1">+1</button>
+                                </div>
+                            </div>
+
+                            <!-- Substance B -->
+                            <div class="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl space-y-1.5">
+                                <div class="flex justify-between items-center text-xs">
+                                    <span class="text-sky-400 font-bold">B 몰수</span>
+                                    <span class="font-mono text-slate-300 text-xs" id="concB">0.00 M</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="adjustSubstance('B', -1)" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-sky-400 font-bold px-2 py-1 rounded border border-slate-700 text-xs transition flex-1">-1</button>
+                                    <input type="number" id="numB" min="0" max="20" step="0.5" value="0.0" 
+                                           class="w-12 bg-slate-900 border border-slate-700 text-slate-100 rounded py-1 text-xs font-mono text-center focus:outline-none focus:border-sky-500">
+                                    <button onclick="adjustSubstance('B', 1)" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-sky-400 font-bold px-2 py-1 rounded border border-slate-700 text-xs transition flex-1">+1</button>
+                                </div>
+                            </div>
+
+                            <!-- Substance C -->
+                            <div class="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl space-y-1.5">
+                                <div class="flex justify-between items-center text-xs">
+                                    <span class="text-emerald-400 font-bold">C 몰수</span>
+                                    <span class="font-mono text-slate-300 text-xs" id="concC">0.00 M</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="adjustSubstance('C', -1)" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-emerald-400 font-bold px-2 py-1 rounded border border-slate-700 text-xs transition flex-1">-1</button>
+                                    <input type="number" id="numC" min="0" max="20" step="0.5" value="0.0" 
+                                           class="w-12 bg-slate-900 border border-slate-700 text-slate-100 rounded py-1 text-xs font-mono text-center focus:outline-none focus:border-emerald-500">
+                                    <button onclick="adjustSubstance('C', 1)" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-emerald-400 font-bold px-2 py-1 rounded border border-slate-700 text-xs transition flex-1">+1</button>
+                                </div>
+                            </div>
+
+                            <!-- Substance D -->
+                            <div class="bg-slate-950/80 border border-slate-800 p-2.5 rounded-xl space-y-1.5">
+                                <div class="flex justify-between items-center text-xs">
+                                    <span class="text-amber-400 font-bold">D 몰수</span>
+                                    <span class="font-mono text-slate-300 text-xs" id="concD">0.00 M</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="adjustSubstance('D', -1)" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-amber-400 font-bold px-2 py-1 rounded border border-slate-700 text-xs transition flex-1">-1</button>
+                                    <input type="number" id="numD" min="0" max="20" step="0.5" value="0.0" 
+                                           class="w-12 bg-slate-900 border border-slate-700 text-slate-100 rounded py-1 text-xs font-mono text-center focus:outline-none focus:border-amber-500">
+                                    <button onclick="adjustSubstance('D', 1)" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-amber-400 font-bold px-2 py-1 rounded border border-slate-700 text-xs transition flex-1">+1</button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Real-time Charts Section -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4">
+                    
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-cyan-400"></i>
+                            실시간 추이 그래프 (Q vs K 및 물질별 농도)
+                        </h2>
+                        <span class="text-[10px] text-slate-400 bg-slate-950 border border-slate-800 px-2 py-0.5 rounded">
+                            동적 갱신 중
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Chart 1: Q vs K Curve -->
+                        <div class="bg-slate-950 rounded-xl p-3 border border-slate-800 flex flex-col justify-between relative">
+                            <div class="text-xs font-semibold text-slate-300 mb-1 flex justify-between">
+                                <span>Q vs K 추이</span>
+                                <span class="text-[10px] text-cyan-400 font-mono">Q ➔ K</span>
+                            </div>
+                            <div class="h-44 relative">
+                                <canvas id="qkChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Chart 2: Concentration Curves -->
+                        <div class="bg-slate-950 rounded-xl p-3 border border-slate-800 flex flex-col justify-between relative">
+                            <div class="text-xs font-semibold text-slate-300 mb-1 flex justify-between">
+                                <span>각 물질의 농도 [M]</span>
+                                <span class="text-[10px] text-emerald-400 font-mono">2A+B ⇌ C+3D</span>
+                            </div>
+                            <div class="h-44 relative">
+                                <canvas id="concChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900/80 border-t border-slate-800 py-3 text-center text-xs text-slate-500 mt-6">
+        <p>화학 평형 시뮬레이션 | 2A(g) + B(g) ⇌ C(g) + 3D(g) | Q = ([C][D]³)/([A]²[B])</p>
+    </footer>
+
+    <script>
+        // State Variables
+        let isPaused = false;
+        let animationFrameId = null;
+
+        // Variables
+        let T = 300;        // Kelvin
+        let V = 2.0;        // Liters
+        let simSpeed = 1.0; // Speed Multiplier
+        let nA = 0.0;       // Initial ZERO
+        let nB = 0.0;       // Initial ZERO
+        let nC = 0.0;       // Initial ZERO
+        let nD = 0.0;       // Initial ZERO
+
+        let concA_val = 0, concB_val = 0, concC_val = 0, concD_val = 0;
+        let Q_val = 0;
+        let K_val = 2.0;
+
+        // Collision Tracking
+        let totalCollisions = 0;
+        let reactantCollisions = 0;
+        let productCollisions = 0;
+        let effectiveCollisions = 0;
+        let collisionHistory = [];
+
+        // Canvas & Particles
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        // Charts
+        let qkChartInstance = null;
+        let concChartInstance = null;
+        let timeStep = 0;
+        let frameCount = 0;
+        const maxDataPoints = 60;
+
+        // Base K calculation formula for Exothermic Reaction
+        function calculateK(temperature) {
+            const T0 = 300;
+            const K0 = 2.0;
+            const deltaH_R = 2500;
+            const kTemp = K0 * Math.exp(-deltaH_R * (1/temperature - 1/T0));
+            return Math.max(0.0001, kTemp);
+        }
+
+        // Initialize on Load
+        window.onload = function() {
+            resizeCanvas();
+            initCharts();
+            setupEventListeners();
+            resetSimulation();
+            requestAnimationFrame(simulationLoop);
+        };
+
+        function resizeCanvas() {
+            if (!canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = Math.max(rect.width, 280);
+            canvas.height = Math.max(rect.height, 280);
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function setupEventListeners() {
+            document.getElementById('tempSlider').addEventListener('input', (e) => {
+                T = parseFloat(e.target.value);
+                document.getElementById('tempDisplay').innerText = `${T} K`;
+                updateSimulationState();
+            });
+
+            document.getElementById('volSlider').addEventListener('input', (e) => {
+                V = parseFloat(e.target.value);
+                const pressure = (2.0 / V).toFixed(2);
+                document.getElementById('volDisplay').innerText = `${V.toFixed(1)} L (P=${pressure} atm)`;
+                document.getElementById('chamberVolumeText').innerText = `V = ${V.toFixed(1)} L`;
+                
+                const pistonHeader = document.getElementById('pistonHeader');
+                const heightPercent = Math.max(0, 100 - (V / 5.0) * 85);
+                pistonHeader.style.height = `${heightPercent}%`;
+
+                updateSimulationState();
+            });
+
+            document.getElementById('speedSlider').addEventListener('input', (e) => {
+                simSpeed = parseFloat(e.target.value);
+                document.getElementById('speedDisplay').innerText = `${simSpeed.toFixed(1)}x`;
+            });
+
+            ['numA', 'numB', 'numC', 'numD'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    nA = Math.max(0, parseFloat(document.getElementById('numA').value) || 0);
+                    nB = Math.max(0, parseFloat(document.getElementById('numB').value) || 0);
+                    nC = Math.max(0, parseFloat(document.getElementById('numC').value) || 0);
+                    nD = Math.max(0, parseFloat(document.getElementById('numD').value) || 0);
+                    syncParticlesWithMoles();
+                    updateSimulationState();
+                });
+            });
+        }
+
+        // Particle Motion with Adjustable Speed
+        class Particle {
+            constructor(type, x, y) {
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.radius = type === 'A' ? 6 : type === 'B' ? 8 : type === 'C' ? 9 : 5;
+                const speedMult = Math.sqrt(T / 300) * 1.2 * simSpeed;
+                const angle = Math.random() * Math.PI * 2;
+                this.vx = Math.cos(angle) * speedMult;
+                this.vy = Math.sin(angle) * speedMult;
+            }
+
+            getColor() {
+                switch(this.type) {
+                    case 'A': return '#f43f5e';
+                    case 'B': return '#38bdf8';
+                    case 'C': return '#10b981';
+                    case 'D': return '#f59e0b';
+                }
+            }
+
+            update(width, height, pistonY) {
+                // Smooth natural speed scaled by user speed setting
+                const targetSpeed = Math.sqrt(T / 300) * 1.2 * simSpeed;
+                const currentSpeed = Math.hypot(this.vx, this.vy);
+                if (currentSpeed > 0) {
+                    this.vx = (this.vx / currentSpeed) * targetSpeed;
+                    this.vy = (this.vy / currentSpeed) * targetSpeed;
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x - this.radius < 0) {
+                    this.x = this.radius;
+                    this.vx = Math.abs(this.vx);
+                } else if (this.x + this.radius > width) {
+                    this.x = width - this.radius;
+                    this.vx = -Math.abs(this.vx);
+                }
+
+                if (this.y - this.radius < pistonY) {
+                    this.y = pistonY + this.radius;
+                    this.vy = Math.abs(this.vy);
+                } else if (this.y + this.radius > height) {
+                    this.y = height - this.radius;
+                    this.vy = -Math.abs(this.vy);
+                }
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.getColor();
+                ctx.shadowColor = this.getColor();
+                ctx.shadowBlur = 4;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.closePath();
+            }
+        }
+
+        // Smart particle sync that does NOT teleport existing particles
+        function syncParticlesWithMoles() {
+            const countA = Math.round(nA * 3);
+            const countB = Math.round(nB * 3);
+            const countC = Math.round(nC * 3);
+            const countD = Math.round(nD * 3);
+
+            adjustParticleCount('A', countA);
+            adjustParticleCount('B', countB);
+            adjustParticleCount('C', countC);
+            adjustParticleCount('D', countD);
+
+            document.getElementById('legendA').innerText = countA;
+            document.getElementById('legendB').innerText = countB;
+            document.getElementById('legendC').innerText = countC;
+            document.getElementById('legendD').innerText = countD;
+        }
+
+        function adjustParticleCount(type, targetCount) {
+            const current = particles.filter(p => p.type === type);
+            const width = canvas.width || 300;
+            const height = canvas.height || 300;
+            const pistonY = (1 - (V / 5.0)) * (height * 0.5);
+
+            if (current.length < targetCount) {
+                const needed = targetCount - current.length;
+                for (let i = 0; i < needed; i++) {
+                    const rx = Math.random() * (width - 30) + 15;
+                    const ry = Math.random() * (height - pistonY - 30) + pistonY + 15;
+                    particles.push(new Particle(type, rx, ry));
+                }
+            } else if (current.length > targetCount) {
+                let toRemove = current.length - targetCount;
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    if (particles[i].type === type && toRemove > 0) {
+                        particles.splice(i, 1);
+                        toRemove--;
+                    }
+                }
+            }
+        }
+
+        function handleParticlePhysicsAndCollisions() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const pistonY = (1 - (V / 5.0)) * (height * 0.5);
+
+            const now = performance.now();
+
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update(width, height, pistonY);
+
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p1 = particles[i];
+                    const p2 = particles[j];
+
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (dist < p1.radius + p2.radius) {
+                        const angle = Math.atan2(dy, dx);
+                        const sin = Math.sin(angle);
+                        const cos = Math.cos(angle);
+
+                        let vx1 = p1.vx * cos + p1.vy * sin;
+                        let vy1 = p1.vy * cos - p1.vx * sin;
+                        let vx2 = p2.vx * cos + p2.vy * sin;
+                        let vy2 = p2.vy * cos - p2.vx * sin;
+
+                        p1.vx = vx2 * cos - vy1 * sin;
+                        p1.vy = vy1 * cos + vx2 * sin;
+                        p2.vx = vx1 * cos - vy2 * sin;
+                        p2.vy = vy2 * cos + vx1 * sin;
+
+                        const overlap = (p1.radius + p2.radius) - dist;
+                        if (dist > 0) {
+                            p1.x -= (overlap / 2) * cos;
+                            p1.y -= (overlap / 2) * sin;
+                            p2.x += (overlap / 2) * cos;
+                            p2.y += (overlap / 2) * sin;
+                        }
+
+                        totalCollisions++;
+                        collisionHistory.push(now);
+
+                        if ((p1.type === 'A' || p1.type === 'B') && (p2.type === 'A' || p2.type === 'B')) {
+                            reactantCollisions++;
+                        } else if ((p1.type === 'C' || p1.type === 'D') && (p2.type === 'C' || p2.type === 'D')) {
+                            productCollisions++;
+                        }
+                    }
+                }
+            }
+
+            collisionHistory = collisionHistory.filter(ts => now - ts <= 1000);
+
+            document.getElementById('totalCollisionsVal').innerText = totalCollisions.toLocaleString();
+            document.getElementById('cpsVal').innerText = `${collisionHistory.length} /s`;
+            document.getElementById('reactantColVal').innerText = reactantCollisions;
+            document.getElementById('productColVal').innerText = productCollisions;
+            document.getElementById('effectiveColVal').innerText = effectiveCollisions;
+        }
+
+        // Chemical Kinetics Step
+        function stepKinetics() {
+            K_val = calculateK(T);
+
+            concA_val = nA / V;
+            concB_val = nB / V;
+            concC_val = nC / V;
+            concD_val = nD / V;
+
+            const denominator = Math.pow(concA_val, 2) * concB_val;
+            if (denominator > 0.000001) {
+                Q_val = (Math.pow(concC_val, 1) * Math.pow(concD_val, 3)) / denominator;
+            } else {
+                Q_val = (concC_val > 0 || concD_val > 0) ? 999.0 : 0.0;
+            }
+
+            const baseRateConst = 0.002 * Math.sqrt(T / 300) * simSpeed;
+            const k_forward = baseRateConst;
+            const k_reverse = baseRateConst / K_val;
+
+            const rateForward = k_forward * Math.pow(concA_val, 2) * concB_val;
+            const rateReverse = k_reverse * concC_val * Math.pow(concD_val, 3);
+
+            const deltaX = (rateForward - rateReverse) * 0.1;
+
+            if (Math.abs(deltaX) > 0.00001) {
+                const actualDelta = Math.max(
+                    -nC, 
+                    Math.max(-nD / 3, Math.min(nA / 2, Math.min(nB, deltaX)))
+                );
+
+                nA -= 2 * actualDelta;
+                nB -= 1 * actualDelta;
+                nC += 1 * actualDelta;
+                nD += 3 * actualDelta;
+
+                if (Math.abs(actualDelta) > 0.001) {
+                    effectiveCollisions++;
+                }
+
+                document.getElementById('numA').value = nA.toFixed(1);
+                document.getElementById('numB').value = nB.toFixed(1);
+                document.getElementById('numC').value = nC.toFixed(1);
+                document.getElementById('numD').value = nD.toFixed(1);
+
+                syncParticlesWithMoles();
+            }
+
+            updateIndicatorsUI();
+        }
+
+        function updateIndicatorsUI() {
+            document.getElementById('concA').innerText = `${(nA/V).toFixed(2)} M`;
+            document.getElementById('concB').innerText = `${(nB/V).toFixed(2)} M`;
+            document.getElementById('concC').innerText = `${(nC/V).toFixed(2)} M`;
+            document.getElementById('concD').innerText = `${(nD/V).toFixed(2)} M`;
+
+            document.getElementById('indicatorQ').innerText = Q_val < 1000 ? Q_val.toFixed(4) : "999.0+";
+            document.getElementById('indicatorK').innerText = K_val.toFixed(4);
+            document.getElementById('kTempDetail').innerText = `@ T = ${T} K`;
+
+            const qkRatio = K_val > 0 ? (Q_val / K_val) : 1.0;
+            document.getElementById('qkRatioVal').innerText = `Q/K = ${qkRatio.toFixed(3)}`;
+
+            const balanceMarker = document.getElementById('balanceMarker');
+            const directionBadge = document.getElementById('directionBadge');
+            const directionText = document.getElementById('directionText');
+            const qStatusText = document.getElementById('qStatusText');
+            const qStateDesc = document.getElementById('qStateDesc');
+
+            let markerPos = 50;
+
+            if (nA === 0 && nB === 0 && nC === 0 && nD === 0) {
+                markerPos = 50;
+                directionBadge.className = "mt-2 py-2 px-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-center font-bold text-sm flex items-center justify-center gap-2 transition-all";
+                directionText.innerHTML = `<i class="fa-solid fa-circle-info"></i> 용기 비어있음 (+1 버튼으로 물질 추가)`;
+                qStatusText.innerText = "물질 없음";
+                qStateDesc.innerText = "빈 용기";
+            } else if (qkRatio < 0.95) {
+                markerPos = Math.max(5, 50 * (Q_val / K_val));
+                directionBadge.className = "mt-2 py-2 px-3 rounded-xl bg-cyan-950/80 border border-cyan-800 text-cyan-300 text-center font-bold text-sm flex items-center justify-center gap-2 transition-all";
+                directionText.innerHTML = `<i class="fa-solid fa-right-long animate-pulse"></i> Q < K : 정반응 진행 중`;
+                qStatusText.innerText = "Q < K (정반응)";
+                qStateDesc.innerText = "반응물 우세";
+            } else if (qkRatio > 1.05) {
+                markerPos = Math.min(95, 50 + 50 * (1 - (K_val / Math.max(0.001, Q_val))));
+                directionBadge.className = "mt-2 py-2 px-3 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 text-center font-bold text-sm flex items-center justify-center gap-2 transition-all";
+                directionText.innerHTML = `<i class="fa-solid fa-left-long animate-pulse"></i> Q > K : 역반응 진행 중`;
+                qStatusText.innerText = "Q > K (역반응)";
+                qStateDesc.innerText = "생성물 우세";
+            } else {
+                markerPos = 50;
+                directionBadge.className = "mt-2 py-2 px-3 rounded-xl bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-center font-bold text-sm flex items-center justify-center gap-2 transition-all";
+                directionText.innerHTML = `<i class="fa-solid fa-check-circle"></i> Q = K : 화학 평형 도달`;
+                qStatusText.innerText = "Q = K (평형)";
+                qStateDesc.innerText = "동적 평형";
+            }
+
+            balanceMarker.style.left = `${markerPos}%`;
+        }
+
+        // Initialize Charts
+        function initCharts() {
+            if (typeof Chart === 'undefined') return;
+
+            const ctxQK = document.getElementById('qkChart').getContext('2d');
+            const ctxConc = document.getElementById('concChart').getContext('2d');
+
+            qkChartInstance = new Chart(ctxQK, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Q', data: [], borderColor: '#38bdf8', borderWidth: 2, pointRadius: 0, tension: 0.2 },
+                        { label: 'K', data: [], borderColor: '#10b981', borderDash: [4, 4], borderWidth: 2, pointRadius: 0, tension: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: { display: false },
+                        y: { 
+                            grid: { color: '#1e293b' }, 
+                            ticks: { color: '#94a3b8', font: { size: 9 } }, 
+                            min: 0,
+                            suggestedMax: 5
+                        }
+                    },
+                    plugins: { legend: { labels: { color: '#cbd5e1', font: { size: 10 } } } }
+                }
+            });
+
+            concChartInstance = new Chart(ctxConc, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: '[A]', data: [], borderColor: '#f43f5e', borderWidth: 1.8, pointRadius: 0 },
+                        { label: '[B]', data: [], borderColor: '#38bdf8', borderWidth: 1.8, pointRadius: 0 },
+                        { label: '[C]', data: [], borderColor: '#10b981', borderWidth: 1.8, pointRadius: 0 },
+                        { label: '[D]', data: [], borderColor: '#f59e0b', borderWidth: 1.8, pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: { display: false },
+                        y: { 
+                            grid: { color: '#1e293b' }, 
+                            ticks: { color: '#94a3b8', font: { size: 9 } }, 
+                            min: 0,
+                            suggestedMax: 2.0
+                        }
+                    },
+                    plugins: { legend: { labels: { color: '#cbd5e1', font: { size: 10 } } } }
+                }
+            });
+        }
+
+        function updateCharts() {
+            if (!qkChartInstance || !concChartInstance) return;
+
+            timeStep++;
+            const label = timeStep.toString();
+
+            qkChartInstance.data.labels.push(label);
+            qkChartInstance.data.datasets[0].data.push(Math.min(Q_val, 10));
+            qkChartInstance.data.datasets[1].data.push(K_val);
+
+            if (qkChartInstance.data.labels.length > maxDataPoints) {
+                qkChartInstance.data.labels.shift();
+                qkChartInstance.data.datasets[0].data.shift();
+                qkChartInstance.data.datasets[1].data.shift();
+            }
+            qkChartInstance.update('none');
+
+            concChartInstance.data.labels.push(label);
+            concChartInstance.data.datasets[0].data.push((nA/V).toFixed(2));
+            concChartInstance.data.datasets[1].data.push((nB/V).toFixed(2));
+            concChartInstance.data.datasets[2].data.push((nC/V).toFixed(2));
+            concChartInstance.data.datasets[3].data.push((nD/V).toFixed(2));
+
+            if (concChartInstance.data.labels.length > maxDataPoints) {
+                concChartInstance.data.labels.shift();
+                concChartInstance.data.datasets.forEach(ds => ds.data.shift());
+            }
+            concChartInstance.update('none');
+        }
+
+        function simulationLoop() {
+            if (!isPaused) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                handleParticlePhysicsAndCollisions();
+                particles.forEach(p => p.draw(ctx));
+                stepKinetics();
+
+                frameCount++;
+                if (frameCount % 4 === 0) {
+                    updateCharts();
+                }
+            }
+            animationFrameId = requestAnimationFrame(simulationLoop);
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const btnText = document.getElementById('playPauseText');
+            const btnIcon = document.getElementById('playPauseIcon');
+            const btn = document.getElementById('playPauseBtn');
+
+            if (isPaused) {
+                btnText.innerText = "재개";
+                btnIcon.className = "fa-solid fa-play";
+                btn.className = "flex-1 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2";
+            } else {
+                btnText.innerText = "일시정지";
+                btnIcon.className = "fa-solid fa-pause";
+                btn.className = "flex-1 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2";
+            }
+        }
+
+        function adjustSubstance(type, delta) {
+            if (type === 'A') nA = Math.max(0, nA + delta);
+            if (type === 'B') nB = Math.max(0, nB + delta);
+            if (type === 'C') nC = Math.max(0, nC + delta);
+            if (type === 'D') nD = Math.max(0, nD + delta);
+
+            document.getElementById('numA').value = nA.toFixed(1);
+            document.getElementById('numB').value = nB.toFixed(1);
+            document.getElementById('numC').value = nC.toFixed(1);
+            document.getElementById('numD').value = nD.toFixed(1);
+
+            syncParticlesWithMoles();
+            updateSimulationState();
+        }
+
+        function resetCollisionCounter() {
+            totalCollisions = 0;
+            reactantCollisions = 0;
+            productCollisions = 0;
+            effectiveCollisions = 0;
+            collisionHistory = [];
+            document.getElementById('totalCollisionsVal').innerText = "0";
+            document.getElementById('cpsVal').innerText = "0 /s";
+            document.getElementById('reactantColVal').innerText = "0";
+            document.getElementById('productColVal').innerText = "0";
+            document.getElementById('effectiveColVal').innerText = "0";
+        }
+
+        function resetSimulation() {
+            T = 300;
+            V = 2.0;
+            simSpeed = 1.0;
+            nA = 0.0;
+            nB = 0.0;
+            nC = 0.0;
+            nD = 0.0;
+
+            document.getElementById('tempSlider').value = 300;
+            document.getElementById('tempDisplay').innerText = "300 K";
+
+            document.getElementById('volSlider').value = 2.0;
+            document.getElementById('volDisplay').innerText = "2.0 L (P=1.00 atm)";
+            document.getElementById('chamberVolumeText').innerText = "V = 2.0 L";
+
+            document.getElementById('speedSlider').value = 1.0;
+            document.getElementById('speedDisplay').innerText = "1.0x (표준)";
+
+            document.getElementById('numA').value = "0.0";
+            document.getElementById('numB').value = "0.0";
+            document.getElementById('numC').value = "0.0";
+            document.getElementById('numD').value = "0.0";
+
+            resetCollisionCounter();
+            syncParticlesWithMoles();
+            updateSimulationState();
+
+            if (qkChartInstance && concChartInstance) {
+                qkChartInstance.data.labels = [];
+                qkChartInstance.data.datasets.forEach(ds => ds.data = []);
+                concChartInstance.data.labels = [];
+                concChartInstance.data.datasets.forEach(ds => ds.data = []);
+            }
+        }
+
+        function updateSimulationState() {
+            concA_val = nA / V;
+            concB_val = nB / V;
+            concC_val = nC / V;
+            concD_val = nD / V;
+
+            K_val = calculateK(T);
+            const denominator = Math.pow(concA_val, 2) * concB_val;
+            Q_val = denominator > 0.000001 ? (Math.pow(concC_val, 1) * Math.pow(concD_val, 3)) / denominator : 0;
+
+            updateIndicatorsUI();
+        }
+
+        function applyPreset(preset) {
+            switch(preset) {
+                case 'initialZero':
+                    resetSimulation();
+                    break;
+                case 'addA':
+                    nA += 4.0;
+                    document.getElementById('numA').value = nA.toFixed(1);
+                    syncParticlesWithMoles();
+                    updateSimulationState();
+                    break;
+                case 'compress':
+                    V = 1.0;
+                    document.getElementById('volSlider').value = 1.0;
+                    document.getElementById('volDisplay').innerText = "1.0 L (P=2.00 atm)";
+                    document.getElementById('chamberVolumeText').innerText = "V = 1.0 L";
+                    document.getElementById('pistonHeader').style.height = '70%';
+                    updateSimulationState();
+                    break;
+                case 'expand':
+                    V = 4.0;
+                    document.getElementById('volSlider').value = 4.0;
+                    document.getElementById('volDisplay').innerText = "4.0 L (P=0.50 atm)";
+                    document.getElementById('chamberVolumeText').innerText = "V = 4.0 L";
+                    document.getElementById('pistonHeader').style.height = '15%';
+                    updateSimulationState();
+                    break;
+                case 'heat':
+                    T = 500;
+                    document.getElementById('tempSlider').value = 500;
+                    document.getElementById('tempDisplay').innerText = "500 K";
+                    updateSimulationState();
+                    break;
+                case 'cool':
+                    T = 220;
+                    document.getElementById('tempSlider').value = 220;
+                    document.getElementById('tempDisplay').innerText = "220 K";
+                    updateSimulationState();
+                    break;
+            }
+        }
+    </script>
+</body>
+</html>
